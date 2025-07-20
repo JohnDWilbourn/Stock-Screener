@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Stock Screener Viewer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-chart-line"></i> Interactive Stock Screener Viewer</h1>
+            <p>Upload your Excel file to view and sort stock data interactively</p>
+        </header>
+
+        <div class="upload-section" id="uploadSection">
+            <div class="upload-area" id="uploadArea">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <h3>Upload Excel File</h3>
+                <p>Drag and drop your .xlsx file here or click to browse</p>
+                <input type="file" id="fileInput" accept=".xlsx" style="display: none;">
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                    <i class="fas fa-folder-open"></i> Choose File
+                </button>
+            </div>
+        </div>
+
+        <div class="data-section" id="dataSection" style="display: none;">
+            <div class="controls">
+                <div class="search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" placeholder="Search stocks...">
+                </div>
+                <div class="export-btn">
+                    <button onclick="exportData()">
+                        <i class="fas fa-download"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <div class="scroll-hint">
+                    <i class="fas fa-arrows-alt-h"></i> Scroll horizontally to view all columns
+                </div>
+                <table id="dataTable">
+                    <thead id="tableHeader">
+                        <!-- Headers will be populated by JavaScript -->
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Data will be populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination">
+                <button id="prevPage" onclick="changePage(-1)">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <span id="pageInfo">Page 1 of 1</span>
+                <button id="nextPage" onclick="changePage(1)">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Processing your Excel file...</p>
+        </div>
+
+        <div class="error" id="error" style="display: none;">
+            <i class="fas fa-exclamation-triangle"></i>
+            <p id="errorMessage"></p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html> 
