@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Screener - Polygon.io</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .result-row:hover {
+            background-color: rgba(99, 102, 241, 0.1);
+            transform: translateY(-1px);
+            transition: all 0.2s ease;
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-2">
+                <i class="fas fa-chart-line mr-3"></i>Stock Screener
+            </h1>
+            <p class="text-white opacity-90">Powered by Polygon.io API</p>
+        </div>
+
+        <!-- Screening Filters -->
+        <div class="glass-effect rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-6">Screening Filters</h2>
+            
+            <form id="screeningForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Price Range -->
+                <div class="space-y-2">
+                    <label class="block text-white font-medium">Price Range</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="minPrice" placeholder="Min $" 
+                               class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <input type="number" id="maxPrice" placeholder="Max $"
+                               class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                </div>
+
+                <!-- Volume -->
+                <div class="space-y-2">
+                    <label class="block text-white font-medium">Minimum Volume</label>
+                    <input type="number" id="minVolume" placeholder="e.g., 1000000"
+                           class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                </div>
+
+                <!-- Market Cap -->
+                <div class="space-y-2">
+                    <label class="block text-white font-medium">Min Market Cap</label>
+                    <select id="minMarketCap" 
+                            class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="">Any Size</option>
+                        <option value="300000000">Small Cap ($300M+)</option>
+                        <option value="2000000000">Mid Cap ($2B+)</option>
+                        <option value="10000000000">Large Cap ($10B+)</option>
+                        <option value="100000000000">Mega Cap ($100B+)</option>
+                    </select>
+                </div>
+
+                <!-- Change Percent -->
+                <div class="space-y-2">
+                    <label class="block text-white font-medium">Change % Range</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="minChangePercent" placeholder="Min %"
+                               class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <input type="number" id="maxChangePercent" placeholder="Max %"
+                               class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                </div>
+
+                <!-- RSI -->
+                <div class="space-y-2">
+                    <label class="block text-white font-medium">RSI Range</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="minRSI" placeholder="Min RSI" min="0" max="100"
+                               class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <input type="number" id="maxRSI" placeholder="Max RSI" min="0" max="100"
+                               class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white placeholder-white placeholder-opacity-70 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    </div>
+                </div>
+
+                <!-- Price vs SMA -->
+                <div class="space-y-2">
+                    <label class="block text-white font-medium">Technical Filter</label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="priceAboveSMA" class="mr-2 rounded">
+                        <label for="priceAboveSMA" class="text-white">Price above 50 SMA</label>
+                    </div>
+                </div>
+
+                <!-- Sort Options -->
+                <div class="space-y-2">
+                    <label class="block text-white font-medium">Sort By</label>
+                    <select id="sortBy" 
+                            class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="change_percent">Change %</option>
+                        <option value="volume">Volume</option>
+                        <option value="price">Price</option>
+                        <option value="market_cap">Market Cap</option>
+                        <option value="rsi">RSI</option>
+                    </select>
+                </div>
+
+                <!-- Sort Order -->
+                <div class="space-y-2">
+                    <label class="block text-white font-medium">Sort Order</label>
+                    <select id="sortOrder" 
+                            class="w-full px-3 py-2 bg-white bg-opacity-20 border border-white border-opacity-30 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <option value="desc">Highest First</option>
+                        <option value="asc">Lowest First</option>
+                    </select>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="md:col-span-2 lg:col-span-3">
+                    <button type="submit" id="screenButton"
+                            class="w-full md:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <i class="fas fa-search mr-2"></i>Screen Stocks
+                    </button>
+                    <button type="button" id="clearButton"
+                            class="w-full md:w-auto ml-0 md:ml-4 mt-2 md:mt-0 px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg transition duration-300 ease-in-out">
+                        <i class="fas fa-times mr-2"></i>Clear Filters
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden text-center py-8">
+            <div class="loading-spinner mx-auto"></div>
+            <p class="text-white mt-4">Screening stocks... This may take a moment.</p>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="hidden">
+            <div class="glass-effect rounded-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-white">Screening Results</h2>
+                    <span id="resultCount" class="text-white bg-blue-600 px-3 py-1 rounded-full text-sm"></span>
+                </div>
+
+                <!-- Results Table -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-white">
+                        <thead>
+                            <tr class="border-b border-white border-opacity-30">
+                                <th class="text-left py-3 px-2">Symbol</th>
+                                <th class="text-left py-3 px-2">Name</th>
+                                <th class="text-right py-3 px-2">Price</th>
+                                <th class="text-right py-3 px-2">Change</th>
+                                <th class="text-right py-3 px-2">Change %</th>
+                                <th class="text-right py-3 px-2">Volume</th>
+                                <th class="text-right py-3 px-2">Market Cap</th>
+                                <th class="text-right py-3 px-2">RSI</th>
+                                <th class="text-right py-3 px-2">50 SMA</th>
+                            </tr>
+                        </thead>
+                        <tbody id="resultsTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden bg-red-500 bg-opacity-20 border border-red-500 text-white px-4 py-3 rounded-lg mt-4">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                <span id="errorText"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Detail Modal -->
+    <div id="stockModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+        <div class="glass-effect rounded-lg p-6 m-4 max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="modalTitle" class="text-2xl font-bold text-white"></h3>
+                <button id="closeModal" class="text-white hover:text-gray-300">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modalContent" class="text-white">
+                <!-- Content will be populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let isLoading = false;
+
+        // DOM elements
+        const screeningForm = document.getElementById('screeningForm');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultsSection = document.getElementById('resultsSection');
+        const errorMessage = document.getElementById('errorMessage');
+        const resultsTableBody = document.getElementById('resultsTableBody');
+        const resultCount = document.getElementById('resultCount');
+        const clearButton = document.getElementById('clearButton');
+        const stockModal = document.getElementById('stockModal');
+        const closeModal = document.getElementById('closeModal');
+
+        // Event listeners
+        screeningForm.addEventListener('submit', handleScreening);
+        clearButton.addEventListener('click', clearFilters);
+        closeModal.addEventListener('click', () => stockModal.classList.add('hidden'));
+
+        // Handle form submission
+        async function handleScreening(e) {
+            e.preventDefault();
+            
+            if (isLoading) return;
+            
+            isLoading = true;
+            showLoading();
+            hideResults();
+            hideError();
+
+            try {
+                const criteria = collectCriteria();
+                const response = await fetch('/api/screen', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(criteria)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayResults(data.results);
+                } else {
+                    showError(data.error || 'An error occurred while screening stocks');
+                }
+            } catch (error) {
+                showError('Network error: ' + error.message);
+            } finally {
+                hideLoading();
+                isLoading = false;
+            }
+        }
+
+        // Collect screening criteria from form
+        function collectCriteria() {
+            const criteria = {};
+
+            const minPrice = document.getElementById('minPrice').value;
+            const maxPrice = document.getElementById('maxPrice').value;
+            const minVolume = document.getElementById('minVolume').value;
+            const minMarketCap = document.getElementById('minMarketCap').value;
+            const minChangePercent = document.getElementById('minChangePercent').value;
+            const maxChangePercent = document.getElementById('maxChangePercent').value;
+            const minRSI = document.getElementById('minRSI').value;
+            const maxRSI = document.getElementById('maxRSI').value;
+            const priceAboveSMA = document.getElementById('priceAboveSMA').checked;
+            const sortBy = document.getElementById('sortBy').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+
+            if (minPrice) criteria.min_price = parseFloat(minPrice);
+            if (maxPrice) criteria.max_price = parseFloat(maxPrice);
+            if (minVolume) criteria.min_volume = parseInt(minVolume);
+            if (minMarketCap) criteria.min_market_cap = parseInt(minMarketCap);
+            if (minChangePercent) criteria.min_change_percent = parseFloat(minChangePercent);
+            if (maxChangePercent) criteria.max_change_percent = parseFloat(maxChangePercent);
+            if (minRSI) criteria.min_rsi = parseFloat(minRSI);
+            if (maxRSI) criteria.max_rsi = parseFloat(maxRSI);
+            if (priceAboveSMA) criteria.price_above_sma = true;
+
+            criteria.sort_by = sortBy;
+            criteria.sort_order = sortOrder;
+
+            return criteria;
+        }
+
+        // Display screening results
+        function displayResults(results) {
+            resultsTableBody.innerHTML = '';
+            
+            if (results.length === 0) {
+                resultsTableBody.innerHTML = '<tr><td colspan="9" class="text-center py-4">No stocks match your criteria</td></tr>';
+            } else {
+                results.forEach(stock => {
+                    const row = createResultRow(stock);
+                    resultsTableBody.appendChild(row);
+                });
+            }
+
+            resultCount.textContent = `${results.length} results`;
+            showResults();
+        }
+
+        // Create table row for stock result
+        function createResultRow(stock) {
+            const row = document.createElement('tr');
+            row.className = 'result-row border-b border-white border-opacity-10 cursor-pointer';
+            row.onclick = () => showStockDetails(stock.ticker);
+
+            const changeClass = stock.change >= 0 ? 'text-green-400' : 'text-red-400';
+            const changeIcon = stock.change >= 0 ? '▲' : '▼';
+
+            row.innerHTML = `
+                <td class="py-3 px-2 font-semibold">${stock.ticker}</td>
+                <td class="py-3 px-2">${truncateText(stock.name, 25)}</td>
+                <td class="py-3 px-2 text-right">$${formatNumber(stock.price, 2)}</td>
+                <td class="py-3 px-2 text-right ${changeClass}">${changeIcon} $${formatNumber(Math.abs(stock.change), 2)}</td>
+                <td class="py-3 px-2 text-right ${changeClass}">${formatNumber(stock.change_percent, 2)}%</td>
+                <td class="py-3 px-2 text-right">${formatNumber(stock.volume)}</td>
+                <td class="py-3 px-2 text-right">${stock.market_cap ? formatMarketCap(stock.market_cap) : 'N/A'}</td>
+                <td class="py-3 px-2 text-right">${stock.rsi ? formatNumber(stock.rsi, 1) : 'N/A'}</td>
+                <td class="py-3 px-2 text-right">${stock.sma_50 ? '$' + formatNumber(stock.sma_50, 2) : 'N/A'}</td>
+            `;
+
+            return row;
+        }
+
+        // Show stock details in modal
+        async function showStockDetails(ticker) {
+            try {
+                const response = await fetch(`/api/stock/${ticker}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('modalTitle').textContent = `${data.ticker} - ${data.name}`;
+                    
+                    const changeClass = data.change >= 0 ? 'text-green-400' : 'text-red-400';
+                    const changeIcon = data.change >= 0 ? '▲' : '▼';
+
+                    document.getElementById('modalContent').innerHTML = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h4 class="text-lg font-semibold mb-2">Price Information</h4>
+                                <p><strong>Current Price:</strong> $${formatNumber(data.current_price, 2)}</p>
+                                <p><strong>Change:</strong> <span class="${changeClass}">${changeIcon} $${formatNumber(Math.abs(data.change), 2)} (${formatNumber(data.change_percent, 2)}%)</span></p>
+                                <p><strong>Volume:</strong> ${formatNumber(data.volume)}</p>
+                                <p><strong>High:</strong> $${formatNumber(data.high, 2)}</p>
+                                <p><strong>Low:</strong> $${formatNumber(data.low, 2)}</p>
+                                <p><strong>Open:</strong> $${formatNumber(data.open, 2)}</p>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold mb-2">Technical Indicators</h4>
+                                <p><strong>50 SMA:</strong> ${data.sma_50 ? '$' + formatNumber(data.sma_50, 2) : 'N/A'}</p>
+                                <p><strong>200 SMA:</strong> ${data.sma_200 ? '$' + formatNumber(data.sma_200, 2) : 'N/A'}</p>
+                                <p><strong>RSI:</strong> ${data.rsi ? formatNumber(data.rsi, 1) : 'N/A'}</p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <h4 class="text-lg font-semibold mb-2">Company Information</h4>
+                                <p><strong>Market Cap:</strong> ${data.market_cap ? formatMarketCap(data.market_cap) : 'N/A'}</p>
+                                <p><strong>Employees:</strong> ${data.employees ? formatNumber(data.employees) : 'N/A'}</p>
+                                <p><strong>Sector:</strong> ${data.sector || 'N/A'}</p>
+                                ${data.website ? `<p><strong>Website:</strong> <a href="${data.website}" target="_blank" class="text-blue-400 hover:underline">${data.website}</a></p>` : ''}
+                                ${data.description ? `<p class="mt-2"><strong>Description:</strong> ${data.description}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+
+                    stockModal.classList.remove('hidden');
+                } else {
+                    showError(data.error || 'Failed to load stock details');
+                }
+            } catch (error) {
+                showError('Failed to load stock details: ' + error.message);
+            }
+        }
+
+        // Clear all filters
+        function clearFilters() {
+            screeningForm.reset();
+            hideResults();
+            hideError();
+        }
+
+        // Utility functions
+        function showLoading() {
+            loadingIndicator.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingIndicator.classList.add('hidden');
+        }
+
+        function showResults() {
+            resultsSection.classList.remove('hidden');
+        }
+
+        function hideResults() {
+            resultsSection.classList.add('hidden');
+        }
+
+        function showError(message) {
+            document.getElementById('errorText').textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMessage.classList.add('hidden');
+        }
+
+        function formatNumber(num, decimals = 0) {
+            if (num === null || num === undefined) return 'N/A';
+            return num.toLocaleString('en-US', { 
+                minimumFractionDigits: decimals, 
+                maximumFractionDigits: decimals 
+            });
+        }
+
+        function formatMarketCap(marketCap) {
+            if (marketCap >= 1e12) {
+                return '$' + (marketCap / 1e12).toFixed(2) + 'T';
+            } else if (marketCap >= 1e9) {
+                return '$' + (marketCap / 1e9).toFixed(2) + 'B';
+            } else if (marketCap >= 1e6) {
+                return '$' + (marketCap / 1e6).toFixed(2) + 'M';
+            } else {
+                return '$' + formatNumber(marketCap);
+            }
+        }
+
+        function truncateText(text, maxLength) {
+            if (text.length > maxLength) {
+                return text.substring(0, maxLength) + '...';
+            }
+            return text;
+        }
+
+        // Close modal when clicking outside
+        stockModal.addEventListener('click', (e) => {
+            if (e.target === stockModal) {
+                stockModal.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
