@@ -1,9 +1,27 @@
+import os
+from dotenv import load_dotenv
 from polygon import RESTClient
 
-# Replace 'YOUR_API_KEY' with your actual Polygon.io API key
-client = RESTClient(api_key="YOUR_API_KEY")
+"""
+Polygon.io Stock Screener
+- Loads API key securely from .env
+- Fetches all stock snapshots
+- Prints tickers with last trade price between $1 and $20
+"""
 
-snapshot = client.get_snapshot_all("stocks")
-for stock in snapshot:
-    if stock.last_trade.price >= 1 and stock.last_trade.price <= 20:
-        print(stock.ticker, stock.last_trade.price, stock.day.volume)
+load_dotenv()
+POLYGON_API_KEY = os.getenv('POLYGON_API_KEY')
+
+if not POLYGON_API_KEY:
+    raise ValueError("Polygon.io API key not found. Please set POLYGON_API_KEY in your .env file.")
+
+client = RESTClient(api_key=POLYGON_API_KEY)
+
+try:
+    snapshot = client.get_snapshot_all("stocks")
+    for stock in snapshot:
+        price = getattr(stock.last_trade, 'price', None)
+        if price is not None and 1 <= price <= 20:
+            print(f"{stock.ticker}: ${price:.2f} | Volume: {stock.day.volume}")
+except Exception as e:
+    print(f"Error fetching Polygon.io data: {e}")
