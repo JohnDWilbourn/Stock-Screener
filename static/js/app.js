@@ -6,6 +6,8 @@ let itemsPerPage = 50;
 let currentSortColumn = '';
 let currentSortDirection = 'asc';
 let filteredData = [];
+let activeFilters = {};
+let columnStats = {};
 
 // DOM elements
 const fileInput = document.getElementById('fileInput');
@@ -21,6 +23,8 @@ const tableBody = document.getElementById('tableBody');
 const prevPageBtn = document.getElementById('prevPage');
 const nextPageBtn = document.getElementById('nextPage');
 const pageInfo = document.getElementById('pageInfo');
+const filtersPanel = document.getElementById('filtersPanel');
+const filtersGrid = document.getElementById('filtersGrid');
 
 // Event listeners
 fileInput.addEventListener('change', handleFileUpload);
@@ -346,6 +350,215 @@ function showError(message) {
     loading.style.display = 'none';
     uploadSection.style.display = 'block';
     dataSection.style.display = 'none';
+}
+
+// Filter functions
+function toggleFilters() {
+    const isVisible = filtersPanel.style.display !== 'none';
+    filtersPanel.style.display = isVisible ? 'none' : 'block';
+    
+    if (!isVisible && currentData.length > 0) {
+        generateFilters();
+    }
+}
+
+function generateFilters() {
+    if (filtersGrid.children.length > 0) return; // Already generated
+    
+    // Calculate statistics for numeric columns
+    calculateColumnStats();
+    
+    // Generate filter inputs for numeric columns (excluding Name)
+    currentHeaders.forEach((header, index) => {
+        if (columnStats[header] && columnStats[header].isNumeric && header !== 'Name') {
+            const filterItem = createFilterItem(header, columnStats[header]);
+            filtersGrid.appendChild(filterItem);
+        }
+    });
+}
+
+function calculateColumnStats() {
+    columnStats = {};
+    
+    currentHeaders.forEach(header => {
+        const values = currentData.map(row => row[header]).filter(val => val !== '' && val !== null && val !== undefined);
+        const numericValues = values.filter(val => !isNaN(parseFloat(val)));
+        
+        if (numericValues.length > 0) {
+            const numbers = numericValues.map(v => parseFloat(v));
+            columnStats[header] = {
+                isNumeric: true,
+                min: Math.min(...numbers),
+                max: Math.max(...numbers),
+                avg: numbers.reduce((a, b) => a + b, 0) / numbers.length
+            };
+        }
+    });
+}
+
+function createFilterItem(header, stats) {
+    const filterItem = document.createElement('div');
+    filterItem.className = 'filter-item';
+    
+    const minValue = stats.min;
+    const maxValue = stats.max;
+    const step = (maxValue - minValue) / 100;
+    
+    filterItem.innerHTML = `
+        <div class="filter-header">
+            <label class="filter-checkbox">
+                <input type="checkbox" data-column="${header}">
+                <span class="checkmark"></span>
+                <h4>${header}</h4>
+            </label>
+        </div>
+        <div class="range-inputs">
+            <span class="range-label">Min:</span>
+            <input type="number" 
+                   step="${step}" 
+                   min="${minValue}" 
+                   max="${maxValue}" 
+                   value="${minValue}" 
+                   placeholder="Min value"
+                   data-column="${header}"
+                   data-type="min"
+                   disabled>
+            <span class="range-label">Max:</span>
+            <input type="number" 
+                   step="${step}" 
+                   min="${minValue}" 
+                   max="${maxValue}" 
+                   value="${maxValue}" 
+                   placeholder="Max value"
+                   data-column="${header}"
+                   data-type="max"
+                   disabled>
+        </div>
+        <small style="color: #666; font-size: 0.7rem;">
+            Range: ${formatNumber(minValue)} - ${formatNumber(maxValue)} | Avg: ${formatNumber(stats.avg)}
+        </small>
+    `;
+    
+    // Add event listener for checkbox
+    const checkbox = filterItem.querySelector('input[type="checkbox"]');
+    const inputs = filterItem.querySelectorAll('input[type="number"]');
+    
+    checkbox.addEventListener('change', function() {
+        inputs.forEach(input => {
+            input.disabled = !this.checked;
+        });
+    });
+    
+    return filterItem;
+}
+
+function formatNumber(value) {
+    if (value >= 1e12) return `${(value / 1e12).toFixed(2)}T`;
+    if (value >= 1e9) return `${(value / 1e9).toFixed(2)}B`;
+    if (value >= 1e6) return `${(value / 1e6).toFixed(2)}M`;
+    if (value >= 1e3) return `${(value / 1e3).toFixed(2)}K`;
+    return value.toFixed(2);
+}
+
+function applyFilters() {
+    activeFilters = {};
+    
+    // Collect all filter values from checked filters only
+    const filterInputs = filtersGrid.querySelectorAll('input[type="number"]:not([disabled])');
+    filterInputs.forEach(input => {
+        const column = input.dataset.column;
+        const type = input.dataset.type;
+        const value = parseFloat(input.value);
+        
+        if (!isNaN(value)) {
+            if (!activeFilters[column]) {
+                activeFilters[column] = {};
+            }
+            activeFilters[column][type] = value;
+        }
+    });
+    
+    // Apply filters to data
+    applyFiltersToData();
+    
+    // Update display
+    currentPage = 1;
+    displayTableData();
+    updatePagination();
+    
+    // Show filter status
+    showFilterStatus();
+}
+
+function applyFiltersToData() {
+    filteredData = currentData.filter(row => {
+        return Object.keys(activeFilters).every(column => {
+            const filter = activeFilters[column];
+            const value = parseFloat(row[column]);
+            
+            if (isNaN(value)) return false;
+            
+            if (filter.min !== undefined && value < filter.min) return false;
+            if (filter.max !== undefined && value > filter.max) return false;
+            
+            return true;
+        });
+    });
+}
+
+function clearFilters() {
+    activeFilters = {};
+    filteredData = [...currentData];
+    
+    // Reset filter inputs and uncheck checkboxes
+    const filterInputs = filtersGrid.querySelectorAll('input[type="number"]');
+    const checkboxes = filtersGrid.querySelectorAll('input[type="checkbox"]');
+    
+    filterInputs.forEach(input => {
+        const column = input.dataset.column;
+        const type = input.dataset.type;
+        const stats = columnStats[column];
+        
+        if (stats) {
+            if (type === 'min') {
+                input.value = stats.min;
+            } else if (type === 'max') {
+                input.value = stats.max;
+            }
+        }
+        input.disabled = true;
+    });
+    
+    // Uncheck all checkboxes
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    
+    currentPage = 1;
+    displayTableData();
+    updatePagination();
+    hideFilterStatus();
+}
+
+function showFilterStatus() {
+    const activeFilterCount = Object.keys(activeFilters).length;
+    if (activeFilterCount > 0) {
+        const status = document.createElement('div');
+        status.id = 'filterStatus';
+        status.className = 'filter-status';
+        status.innerHTML = `
+            <i class="fas fa-filter"></i>
+            ${activeFilterCount} active filter(s) - ${filteredData.length} stocks shown
+        `;
+        dataSection.insertBefore(status, dataSection.firstChild);
+    }
+}
+
+function hideFilterStatus() {
+    const status = document.getElementById('filterStatus');
+    if (status) {
+        status.remove();
+    }
 }
 
 // Initialize the application
